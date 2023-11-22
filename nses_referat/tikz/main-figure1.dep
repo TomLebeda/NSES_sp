@@ -1,0 +1,4 @@
+tikz/main-figure1.pdf: src/./data/rozl2_grid_fafsu:0.6_bs500_mom0.8_lr0.4.log
+tikz/main-figure1.pdf: src/./data/rozl2_points_fafsu:0.6_bs500_mom0.8_lr0.4.log
+tikz/main-figure1.pdf: src/./data/rozl2_points_fafsu:0.6_bs500_mom0.8_lr0.4.log
+tikz/main-figure1.pdf: src/./data/rozl2_grid_fafsu:0.6_bs500_mom0.8_lr0.4.log

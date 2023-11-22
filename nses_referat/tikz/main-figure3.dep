@@ -1,0 +1,8 @@
+tikz/main-figure3.pdf: src/./data/acc5.log
+tikz/main-figure3.pdf: src/./data/acc6.log
+tikz/main-figure3.pdf: src/./data/acc7.log
+tikz/main-figure3.pdf: src/./data/acc8.log
+tikz/main-figure3.pdf: src/./data/cost5.log
+tikz/main-figure3.pdf: src/./data/cost6.log
+tikz/main-figure3.pdf: src/./data/cost7.log
+tikz/main-figure3.pdf: src/./data/cost8.log

@@ -1,0 +1,3 @@
+tikz/main-figure0.pdf: src/./data/grid_fafsu:0.5_bs50_mom0.8_lr0.2.log
+tikz/main-figure0.pdf: src/./data/points_faf2_3_bs2_mom3_lr3.log
+tikz/main-figure0.pdf: src/./data/grid_fafsu:0.5_bs50_mom0.8_lr0.2.log

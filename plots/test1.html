@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Title</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.2/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js"></script>
+    <style> .container { display: flex; justify-content: center; align-items: center; } .item { margin: auto; } </style>
+  </head>
+  <body>
+      <div class="container">
+        <div class="item" id="chart" style="width: 1000px; height: 800px"></div>
+      </div>
+      
+      <script type="text/javascript">
+          
+          var chart = echarts.init(document.getElementById('chart'), null, { renderer: 'canvas' });
+          var option = {
+  "legend": {
+    "top": "bottom"
+  },
+  "series": [
+    {
+      "type": "pie",
+      "name": "Nighasdfasdf",
+      "roseType": "radius",
+      "itemStyle": {
+        "borderRadius": 8.0
+      },
+      "center": [
+        "50%",
+        "50%"
+      ],
+      "radius": [
+        "50",
+        "250"
+      ],
+      "data": [
+        {
+          "value": 80.0,
+          "name": "rose 1"
+        },
+        {
+          "value": 38.0,
+          "name": "rose 2"
+        },
+        {
+          "value": 32.0,
+          "name": "rose 3"
+        },
+        {
+          "value": 30.0,
+          "name": "rose 4"
+        },
+        {
+          "value": 28.0,
+          "name": "rose 5"
+        },
+        {
+          "value": 26.0,
+          "name": "rose 6"
+        },
+        {
+          "value": 22.0,
+          "name": "rose 7"
+        },
+        {
+          "value": 18.0,
+          "name": "rose 8"
+        }
+      ]
+    }
+  ]
+};
+          chart.setOption(option);
+      </script>
+  </body>
+</html>

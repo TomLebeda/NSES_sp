@@ -1,0 +1,21 @@
+[package]
+name = "nses_sp"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bimap = "0.6.3"
+clap = { version = "4.4.7", features = ["derive"] }
+clap-num = "1.0.2"
+env_logger = "0.10.0"
+itertools = "0.12.0"
+log = "0.4.20"
+nalgebra = { version = "0.32.3", features = ["rand"] }
+nom = "7.1.3"
+rand = "0.8.5"
+rayon = "1.8.0"
+regex = "1.10.2"
+rerun = "0.10.1"
+rgb_hsv = "1.0.1"

@@ -1,0 +1,8 @@
+tikz/main-figure2.pdf: src/./data/acc1.log
+tikz/main-figure2.pdf: src/./data/acc2.log
+tikz/main-figure2.pdf: src/./data/acc3.log
+tikz/main-figure2.pdf: src/./data/acc4.log
+tikz/main-figure2.pdf: src/./data/cost1.log
+tikz/main-figure2.pdf: src/./data/cost2.log
+tikz/main-figure2.pdf: src/./data/cost3.log
+tikz/main-figure2.pdf: src/./data/cost4.log

@@ -1,0 +1,393 @@
+\definecolor{mymag}{RGB}{157, 0, 198}
+\section{Řešení}
+
+Jako první bylo potřeba rozhodnout jakou podobu bude řešení mít a v jakém jazyce či prostředí bude implementováno.
+Po důkladném posouzení problému bylo rozhodnuto, že implementace bude mít podobu CLI aplikace psané v jazyce Rust s volitelnými vizualizacemi v reálném čase pomocí softwaru \texttt{Rerun.io}.
+
+Navíc bylo řešení vytvořeno univerzálně tak, aby bylo možné pomocí argumentů příkazové řádky specifikovat počet a velikosti vrstev, jejich aktivační funkce a další parametry jako konstantu učení, velikost dávky, momentum, \ldots
+
+\subsection{Běh programu}
+Celý běh programu lze shrnout v následujících krocích:
+\subsubsection*{Inicializace:}
+V tomto kroku jsou načtené a aplikované vstupní parametry z příkazové řádky, případně je vypsáno kde nastal problém při validaci vstupní konfigurace.
+\subsubsection*{Načtení trénovacích dat:}
+V tomto kroku jsou z poskytnuté cesty na disku načtena trénovací data do paměti.
+Očekávaný formát je popsaný v zadání s následujícími doplňky:
+\begin{itemize}
+	\item Data mohou obsahovat více vstupních příznaků.
+	\item Data mohou obsahovat libovolný počet klasifikačních tříd.
+	\item Počet tříd i příznaků lze specifikovat ručně, nebo je odhadne automaticky z dat.
+	\item Třídy je možné značit libovolnými přirozenými čísly, ne nutně 1, 2, 3, \ldots
+\end{itemize}
+\subsubsection*{Vytvoření modelu neuronové sítě:}
+V tomto kroku je vytvořen samotný model neuronové sítě podle konfigurace:
+\begin{itemize}[leftmargin=5mm]
+	\item Počet vstupů je odvozený automaticky z počtu vstupních příznaků.
+	\item Počet výstupů (= velikost poslední vrstvy) je odvozený automaticky z počtu tříd.
+	\item Aktivační funkce výstupní vrstvy je možné specifikovat pomocí argumentu příkazové řádky\\
+	      \texttt{--final-layer-af} ve formátu {\color{blue}\texttt{S:P}}, viz následující bod a Tabulky~\ref{tab:placeholders}~\ref{tab:actfn}.
+	\item Skryté vrstvy je možné specifikovat pomocí argumentu příkazové řádky \texttt{--hidden-layers}.
+	      Očekávaná hodnota tohoto argumentu je řetězec skládající se z částí ve formátu {\color{blue}\texttt{N:S:P}} nebo {\color{blue}\texttt{N:S}} oddělených čárkami (bez mezer).
+	      Význam složek {\color{blue}\texttt{N}}, {\color{blue}\texttt{S}}, {\color{blue}\texttt{P}} je v Tabulce~\ref{tab:placeholders}.
+	      \begin{table}[ht!]
+		      \centering
+		      \begin{tabular}{|c|c|c|c|}
+			      \hline
+			      \textbf{Zkratka}         & \textbf{Význam}                     & \textbf{Datový typ}                  & \textbf{Příklad}                              \\
+			      \hline
+			      {\color{blue}\texttt{N}} & velikost vrstvy                     & přirozené číslo                      & \enquote{9}, \enquote{12}                     \\
+			      {\color{blue}\texttt{S}} & typ aktivační funkce                & řetězec, viz~Tabulka~\ref{tab:actfn} & \enquote{Linear}, \enquote{bibi}, \enquote{r} \\
+			      {\color{blue}\texttt{P}} & parametr aktivační funkce $\lambda$ & reálné číslo                         & \enquote{0.5}, \enquote{12.36}                \\
+			      \hline
+		      \end{tabular}
+		      \caption{Význam složek {\color{blue}\texttt{N:S:P}}}\label{tab:placeholders}
+	      \end{table}
+	      \begin{table}[ht!]
+		      \centering
+		      \begin{tabular}{|c|c|c|}
+			      \hline
+			      \textbf{Aktivační funkce} & \textbf{Předpis}                                                                        & \textbf{Možné způsoby zadání ({\color{blue}\texttt{S}})}                                              \\
+			      \hline
+			      Binární bipolární         & $ f(x) = \text{sgn}(x) = \begin{cases} +1 & x \geq 0 \\ -1 & x < 0 \end{cases}$         & \begin{tabular}{c} \texttt{BinaryBipolar} \\[-1mm] \texttt{bibi} \\[-1mm] \texttt{bb} \end{tabular}   \\
+			      \hline
+			      Binární unipolární        & $ f(x) = \begin{cases} +1 & x \geq 0 \\ 0 & x < 0 \end{cases}$                          & \begin{tabular}{c} \texttt{BinaryUnipolar} \\[-1mm] \texttt{biun} \\[-1mm] \texttt{bu} \end{tabular}  \\
+			      \hline
+			      Sigmoida bipolární        & $\displaystyle f(x) = \frac{2}{1 + \exp(-\lambda \cdot x)} - 1$                         & \begin{tabular}{c} \texttt{SigmoidBipolar} \\[-1mm] \texttt{sibi} \\[-1mm] \texttt{sb} \end{tabular}  \\
+			      \hline
+			      Sigmoida unipolární       & $\displaystyle f(x) = \frac{1}{1+\exp(-\lambda \cdot x)}$                               & \begin{tabular}{c} \texttt{SigmoidUnipolar} \\[-1mm] \texttt{siun} \\[-1mm] \texttt{su} \end{tabular} \\
+			      \hline
+			      p-ReLU                    & $\displaystyle f(x) = \begin{cases} \lambda \cdot x & x \geq 0 \\ 0 & x < 0\end{cases}$ & \begin{tabular}{c} \texttt{ReLU} \\[-1mm] \texttt{relu} \\[-1mm] \texttt{r} \end{tabular}             \\
+			      \hline
+			      Lineární                  & $\displaystyle f(x) = \lambda \cdot x $                                                 & \begin{tabular}{c} \texttt{Linear} \\[-1mm] \texttt{lin} \\[-1mm] \texttt{l} \end{tabular}            \\
+			      \hline
+		      \end{tabular}
+		      \caption{Aktivační funkce použitelné v programu}\label{tab:actfn}
+	      \end{table}
+
+	      Například argument ve tvaru \enquote{\texttt{--hidden-layers {\color{red}5:lin:0.8},{\color{blue}7:biun},{\color{green!70!black}4:relu:0.9}}} vytvoří neuronovou síť se čtyřmi vrstvami:
+	      \begin{itemize}
+		      \item {\color{red}První (skrytá) vrstva} bude mít 5 neuronů s lineární aktivační funkcí s parametrem $\lambda=0.8$.
+		      \item {\color{blue}Druhá (skrytá) vrstva} bude mít 7 neuronů s binární unipolární aktivační funkcí.
+		      \item {\color{green!70!black}Třetí (skrytá) vrstva} bude mít 4 neurony s p-ReLU aktivační funkcí s parametrem $\lambda=0.9$.
+		      \item Výstupní vrstva bude mít počet neuronů daný počtem tříd.
+	      \end{itemize}
+	\item Velikost trénovacích dávek lze specifikovat přirozeným číslem pomocí argumentu \texttt{--batch-size}.
+	      Výchozí hodnota je plná velikosti trénovací množiny.
+	\item Konstanta učení lze specifikovat reálným číslem pomocí argumentu \texttt{--learning-rate}.
+	\item Momentová konstanta lze specifikovat reálným číslem pomocí argumentu \texttt{--momentum}.
+\end{itemize}
+
+\subsubsection*{Trénovací cyklus}
+Samotný trénovací cyklus lze popsat v následujících bodech:
+\begin{enumerate}
+	\item Inicializace pomocných proměnných, mapování mezi třídou a její one-hot-vector reprezentací.
+	\item Náhodné zamíchání trénovacích dat a jejich rozdělení na dávky.
+	\item Spočtení gradientu pomocí algoritmu zpětné propagace a celkové ztráty dané dávky.
+	      Gradient je počítán pro každý trénovací bod samostatně a nakonec je udělán průměr přes celou dávku (pro lepší robustnost).
+	\item Změna parametrů sítě podle právě spočteného gradientu momentovou metodou.
+	\item Kontrola přesnosti sítě (na všech trénovacích datech).
+	      Pokud je přesnost dostačující (dle konfigurace argumentem \texttt{--target-acc}), tak trénování končí (úspěšně).
+
+	      V opačném případě kontrola, zda počítadlo epoch dosáhlo maximální hodnoty (dle konfigurace argumentem \texttt{--max-epochs}).
+	      Pokud ano, trénování také končí (neúspěšně).
+
+	      Jinak kontrola další dávky: Pokud existuje další dávka v současné epoše, pokračování do bodu 3 s další dávkou.
+	      Pokud neexistuje, inkrementace počítadla epoch a pokračování do bodu 2.
+\end{enumerate}
+Pro implementační detaily viz přiložený zdrojový kód.
+
+\emph{Poznámka:} současná implementace nerozděluje vstupní data na trénovací a evaluační množinu, což v praxi vede k nežádoucímu přetrénování sítě,
+nicméně pro účely této práce to nepředstavuje problém.
+
+\subsection{Výsledky a vliv meta-parametrů}
+V následující části budou zobrazené a diskutované vlivy jednotlivých meta-parametrů na průběh a výsledek trénování.
+
+\subsubsection{Výsledné rozdělení vstupního prostoru}
+Na Obrázku~\ref{fig:rozd1} je zobrazeno finální rozdělení vstupního prostoru včetně znázorněných trénovacích dat.
+Jak je možné z této vizualizace pozorovat, vstupní rovina je rozdělena přímkami na pět oblastí, což odpovídá charakteristice jednovrstvé neuronové sítě.
+
+Dále lze vidět, že oblasti nejsou centrované kolem shluků trénovacích dat, což je způsobeno velmi dobrou lineární separabilitou dat a ukončením trénování sítě okamžitě ve chvíli, kdy jsou všechny body správně klasifikované.
+
+V tomto případě byla úspěšnost $100\%$, proto zde nejsou body rozlišené barevně, patří vždy do třídy, v jejíž oblasti se nacházejí.
+
+\begin{figure}[ht!]
+	\centering
+	\begin{tikzpicture}
+		\pgfplotsset{ width=11cm, }
+		\begin{scope}
+			\clip (0, 0) rectangle (11cm, 11cm);
+			\begin{axis}[ scale only axis, enlargelimits=false, height=11cm, clip mode=individual, scatter/classes={ 1={blue!50!cyan}, 2={mymag}, 3={red}, 4={orange!50!yellow}, 5={green!80!black} } ]
+				\addplot[ enlargelimits=false, scatter, only marks, scatter src=explicit symbolic, mark=square*, mark size=1.2, ] table[meta=label] {./data/grid_fafsu:0.5_bs50_mom0.8_lr0.2.log};
+				\addplot[ only marks, mark=*, mark size=0.7, black, ] table[meta=label] {./data/points_faf2_3_bs2_mom3_lr3.log};
+			\end{axis}
+		\end{scope}
+		\begin{axis}[ scale only axis, enlargelimits=false, height=11cm, xlabel={$x_1$}, ylabel={$x_2$}, axis on top, clip mode=individual, ]
+			\addplot[ mark=none, draw=none, ] table[meta=label] {./data/grid_fafsu:0.5_bs50_mom0.8_lr0.2.log};
+		\end{axis}
+	\end{tikzpicture}
+	\caption{Výsledné rozdělení prostoru jednovrstvou sítí}\label{fig:rozd1}
+\end{figure}
+
+Na Obrázku~\ref{fig:rozd2} je pak zobrazeno finální rozdělení vstupního prostoru druhé sady dat, která již nebyla dobře lineární separovatelná.
+Neuronová síť trénovaná na tento případ měla dvě vrstvy, což se projevilo ve tvaru oblastí, které nápadně připomínají polynomy druhého řádu - paraboly.
+
+Cílová úspěšnost byla nastavena na $98\%$ a jak je možné z vizualizace vidět, některé body byly klasifikované chybně (barva bodu odpovídá jeho správné klasifikaci, barva pozadí odpovídá jeho predikované klasifikaci).
+
+\begin{figure}[ht!]
+	\centering
+	\begin{tikzpicture}
+		\pgfplotsset{ width=11cm, }
+		\begin{scope}
+			\clip (0, 0) rectangle (11cm, 11cm);
+			\begin{axis}[ scale only axis, enlargelimits=false, height=11cm, clip mode=individual, scatter/classes={ 1={blue!50!cyan}, 2={mymag}, 3={red}, 4={orange!50!yellow}, 5={green!80!black} } ]
+				\addplot[ enlargelimits=false, scatter, only marks, scatter src=explicit symbolic, mark=square*, mark size=1.2, ] table[meta=label] {./data/rozl2_grid_fafsu:0.6_bs500_mom0.8_lr0.4.log};
+				\addplot[ scatter, scatter src=explicit symbolic, only marks, mark=*, mark size=2.4, ] table[meta=label] {./data/rozl2_points_fafsu:0.6_bs500_mom0.8_lr0.4.log};
+				\addplot[ only marks, mark=o, mark size=2.5, black, thick] table[meta=label] {./data/rozl2_points_fafsu:0.6_bs500_mom0.8_lr0.4.log};
+			\end{axis}
+		\end{scope}
+		\begin{axis}[ scale only axis, enlargelimits=false, height=11cm, xlabel={$x_1$}, ylabel={$x_2$}, axis on top, clip mode=individual, ]
+			\addplot[ mark=none, draw=none, ] table[meta=label] {./data/rozl2_grid_fafsu:0.6_bs500_mom0.8_lr0.4.log};
+		\end{axis}
+	\end{tikzpicture}
+	\caption{Výsledné rozdělení prostoru dvouvrstvou sítí}\label{fig:rozd2}
+\end{figure}
+
+Náhodně zvolené počáteční hodnoty vah a prahů způsobí pro opakované běhy mírně rozdílné výstupy,
+nicméně výše popsaná pozorování jsou konzistentní pro opakované běhy s malou mírou variability.
+
+\newpage
+\subsubsection{Průběh ztráty a přesnosti}
+Na Obrázku~\ref{fig:run1} jsou zobrazené průběhy přesností 4 různých běhů jednovrstvé neuronové sítě se stejnými parametry (viz Tabulka~\ref{tab:set-acc-1}).
+\begin{table}[ht!]
+	\centering
+	\begin{tabular}{|r|l|}
+		\hline
+		\textbf{Parametr sítě}           & \textbf{Hodnota}                     \\
+		\hline
+		Aktivační funkce výstupní vrstvy & sigmoida unipolární, $\lambda = 0.6$ \\
+		Velikost trénovací dávky         & 100                                  \\
+		Momentová konstanta              & 0.8                                  \\
+		Konstanta učení                  & 0.4                                  \\
+		Skryté vrstvy                    & žádné                                \\
+		\hline
+	\end{tabular}
+	\caption{Nastavení sítě z Obrázku~\ref{fig:run1}}\label{tab:set-acc-1}
+\end{table}
+Z grafu je zřejmé, že počáteční náhodné nastavení vah a prahů výrazně ovlivní počáteční přesnost sítě, nicméně s dostatečným počtem iterací
+tato síť konverguje spolehlivě ke $100\%$ přesnosti.
+
+\enquote{Schodovitá} charakteristika průběhu přesností je pravděpodobně způsobena rozmístěním trénovacích dat,
+kdy k prudkému vzrůstu přesnosti dojde když se nějaká z rozdělujících přímek dostane do oblasti nějakého ze shluků.
+
+\begin{figure}[ht!]
+	\centering
+	\begin{tikzpicture}
+		\matrix{
+			\begin{axis}[
+				ylabel={přesnost [\%]},
+				width=0.9\textwidth,
+				height=5cm
+				]
+				\addplot[red, thick, smooth, mark=*, mark size=0.9] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/acc1.log};
+				\addplot[green!80!black, thick, smooth, mark=*, mark size=0.9] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/acc2.log};
+				\addplot[blue, thick, smooth, mark=*, mark size=0.9] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/acc3.log};
+				\addplot[yellow!50!orange, thick, smooth, mark=*, mark size=0.9] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/acc4.log};
+			\end{axis}
+			\\
+			\begin{axis}[
+					xlabel={iterace},
+					ylabel={ztráty},
+					width=0.9\textwidth,
+					height=5cm
+				]
+				\addplot[red, thick, smooth, mark=*, mark size=0.9] table[x expr=\coordindex, y expr=\thisrowno{0} / 100] {./data/cost1.log};
+				\addplot[green!80!black, thick, smooth, mark=*, mark size=0.9] table[x expr=\coordindex, y expr=\thisrowno{0} / 100] {./data/cost2.log};
+				\addplot[blue, thick, smooth, mark=*, mark size=0.9] table[x expr=\coordindex, y expr=\thisrowno{0} / 100] {./data/cost3.log};
+				\addplot[yellow!50!orange, thick, smooth, mark=*, mark size=0.9] table[x expr=\coordindex, y expr=\thisrowno{0} / 100] {./data/cost4.log};
+			\end{axis}
+			\\
+		};
+	\end{tikzpicture}
+	\caption{Přesnost a ztráty 4 různých běhů jednovrstvé sítě}\label{fig:run1}
+\end{figure}
+
+Na Obrázku~\ref{fig:run2} jsou pak znázorněné průběhy přesností a ztrát pro dvouvrstvou neuronovou síť s konfigurací v Tabulce~\ref{tab:set-acc-2}.
+Na tomto grafu je patrné, že pro dosažení přesnosti $98 \%$ bylo zapotřebí mnohem více iteračních cyklů.
+Dále je možné z vizualizace sledovat, že průběhy jednotlivých trénování mají velmi podobný charakter a vliv rozdílných počátečních není tolik zřetelný jako u jednodušší sítě s lépe separovanými daty.
+
+\begin{figure}[ht!]
+	\centering
+	\begin{tikzpicture}
+		\matrix{
+			\begin{axis}[
+				ylabel={přesnost [\%]},
+				width=0.9\textwidth,
+				height=5cm
+				]
+				\addplot[red,  smooth, mark=*, mark size=0.7] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/acc5.log};
+				\addplot[green!80!black,  smooth, mark=*, mark size=0.7] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/acc6.log};
+				\addplot[blue,  smooth, mark=*, mark size=0.7] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/acc7.log};
+				\addplot[yellow!50!orange,  smooth, mark=*, mark size=0.7] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/acc8.log};
+			\end{axis}
+			\\
+			\begin{axis}[
+					xlabel={iterace},
+					ylabel={ztráty},
+					width=0.9\textwidth,
+					height=5cm
+				]
+				\addplot[red,  smooth, mark=*, mark size=0.7] table[x expr=\coordindex, y expr=\thisrowno{0} / 100] {./data/cost5.log};
+				\addplot[green!80!black,  smooth, mark=*, mark size=0.7] table[x expr=\coordindex, y expr=\thisrowno{0} / 100] {./data/cost6.log};
+				\addplot[blue,  smooth, mark=*, mark size=0.7] table[x expr=\coordindex, y expr=\thisrowno{0} / 100] {./data/cost7.log};
+				\addplot[yellow!50!orange,  smooth, mark=*, mark size=0.7] table[x expr=\coordindex, y expr=\thisrowno{0} / 100 ] {./data/cost8.log};
+			\end{axis}
+			\\
+		};
+	\end{tikzpicture}
+	\caption{Přesnost a ztráty 4 různých běhů dvouvrstvé sítě}\label{fig:run2}
+\end{figure}
+
+\begin{table}[ht!]
+	\centering
+	\begin{tabular}{|r|l|}
+		\hline
+		\textbf{Parametr sítě}           & \textbf{Hodnota}                      \\
+		\hline
+		Aktivační funkce výstupní vrstvy & sigmoida unipolární, $\lambda = 0.6$  \\
+		Velikost trénovací dávky         & 100                                   \\
+		Momentová konstanta              & 0.8                                   \\
+		Konstanta učení                  & 0.4                                   \\
+		Skryté vrstvy                    & 10 neuronů, lineární, $\lambda = 0.6$ \\
+		\hline
+	\end{tabular}
+	\caption{Nastavení sítě z Obrázku~\ref{fig:run2}}\label{tab:set-acc-2}
+\end{table}
+
+\newpage
+\subsubsection{Vliv velikosti trénovací dávky}
+Na Obrázku~\ref{fig:bs} je zobrazen vliv velikosti trénovací dávky na průběh ztráty a přesnosti dvouvrstvé neuronové sítě.
+Jak je možné vidět, tak velikost trénovací dávky souvisí s hladkostí (počtem lokálních extrémů).
+
+Čím větší je trénovací dávka, tím více reprezentativní bude výsledný vektor gradientu a tím pádem bude úprava vah a prahů \enquote{přesnější}.
+Nevýhodou velkých trénovacích dávek je nutnost velkého počtu trénovacích a vyšší výpočetní náročnost.
+
+\begin{figure}[ht!]
+	\centering
+	\begin{tikzpicture}
+		\matrix{
+			\begin{axis}[width=6.5cm, height=5cm, ylabel={přesnost [$\%$]}, xmajorticks=false, name=1, xtick={0, 100, 200}, ytick={0, 50, 100}]
+				\addplot[red,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/bs_100-acc1.log};
+				\addplot[green!80!black,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/bs_100-acc2.log};
+				\addplot[blue,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/bs_100-acc3.log};
+			\end{axis}
+			\node[anchor=south east] at (1.south east) {\scriptsize velikost dávky: 100};
+			 &
+			\begin{axis}[width=6.5cm, height=5cm, ymajorticks=false, xmajorticks=false, name=2, xtick={0, 100, 200}, ytick={0, 50, 100}]
+				\addplot[red,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/bs_300-acc1.log};
+				\addplot[green!80!black,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/bs_300-acc2.log};
+				\addplot[blue,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/bs_300-acc3.log};
+			\end{axis}
+			\node[anchor=south east] at (2.south east) {\scriptsize velikost dávky: 300};
+			 &
+			\begin{axis}[width=6.5cm, height=5cm, ymajorticks=false, xmajorticks=false, name=3, xtick={0, 100, 200}, ytick={0, 50, 100}]
+				\addplot[red,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/bs_500-acc1.log};
+				\addplot[green!80!black,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/bs_500-acc2.log};
+				\addplot[blue,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/bs_500-acc3.log};
+			\end{axis}
+			\node[anchor=south east] at (3.south east) {\scriptsize velikost dávky: 500};
+			\\
+			\begin{axis}[width=6.5cm, height=5cm, ylabel={ztráta}, name=1, xlabel={iterace}, xtick={0, 100, 200}, ytick={0, 1, 2},ymin=0, ymax=2]
+				\addplot[red,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0} / 100] {./data/bs_100_cost1.log};
+				\addplot[green!80!black,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0} / 100] {./data/bs_100_cost2.log};
+				\addplot[blue,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0} / 100] {./data/bs_100_cost3.log};
+			\end{axis}
+			\node[anchor=north east] at (1.north east) {\scriptsize velikost dávky: 100};
+			 &
+			\begin{axis}[width=6.5cm, height=5cm, ymajorticks=false, name=2, xlabel={iterace}, xtick={0, 100, 200}, ytick={0, 1, 2},ymin=0, ymax=2]
+				\addplot[blue,  smooth, each nth point=2] table[x expr=\coordindex, y expr=\thisrowno{0} / 300] {./data/bs_300_cost3.log};
+				\addplot[green!80!black,  smooth, each nth point=2] table[x expr=\coordindex, y expr=\thisrowno{0} / 300 ] {./data/bs_300_cost2.log};
+				\addplot[red,  smooth, each nth point=2] table[x expr=\coordindex, y expr=\thisrowno{0} / 300 ] {./data/bs_300_cost1.log};
+			\end{axis}
+			\node[anchor=north east] at (2.north east) {\scriptsize velikost dávky: 300};
+			 &
+			\begin{axis}[width=6.5cm, height=5cm, ymajorticks=false, name=3, xlabel={iterace}, xtick={0, 100, 200}, ytick={0, 1, 2},ymin=0, ymax=2]
+				\addplot[blue,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0} / 500] {./data/bs_500_cost3.log};
+				\addplot[green!80!black,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0} / 500] {./data/bs_500_cost2.log};
+				\addplot[red,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0} / 500] {./data/bs_500_cost1.log};
+			\end{axis}
+			\node[anchor=north east] at (3.north east) {\scriptsize velikost dávky: 500};
+			\\
+		};
+	\end{tikzpicture}
+	\caption{Vliv velikosti dávky na průběh ztráty a přesnosti}\label{fig:bs}
+\end{figure}
+
+\newpage
+\subsubsection{Vliv konstanty učení}
+Na Obrázku~\ref{fig:lr} je zobrazen vliv konstanty učení na průběh trénování dvouvrstvé neuronové sítě.
+Jak je možné z grafů vidět, s rostoucí hodnotou konstanty učení prudce klesá počet iterací potřebných k dosažení požadované přesnosti.
+
+Cenou za rychlejší trénování je však vyšší pravděpodobnost, že změna vah a prahů bude příliš agresivní a \enquote{přeskočí} optimální bod.
+Toto chování je vidět ke konci trénovacích cyklů s konstantou učení 0.5, kde již jsou potřeba pouze malé změny prahů a vah.
+
+\begin{figure}[ht!]
+	\centering
+	\begin{tikzpicture}
+		\matrix{
+			\begin{axis}[width=6.5cm, height=5cm, ylabel={přesnost [$\%$]}, xmajorticks=false, name=1, ]
+				\addplot[red,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/lr_0.1_acc1.log};
+				\addplot[green!80!black,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/lr_0.1_acc2.log};
+				\addplot[blue,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/lr_0.1_acc3.log};
+			\end{axis}
+			\node[anchor=south east] at (1.south east) {\scriptsize konstanta učení: 0.1};
+			 &
+			\begin{axis}[width=6.5cm, height=5cm, ymajorticks=false, xmajorticks=false, name=2]
+				\addplot[red,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/lr_0.3_acc1.log};
+				\addplot[green!80!black,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/lr_0.3_acc2.log};
+				\addplot[blue,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/lr_0.3_acc3.log};
+			\end{axis}
+			\node[anchor=south east] at (2.south east) {\scriptsize konstanta učení: 0.3};
+			 &
+			\begin{axis}[width=6.5cm, height=5cm, ymajorticks=false, xmajorticks=false, name=3]
+				\addplot[red,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/lr_0.5_acc1.log};
+				\addplot[green!80!black,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/lr_0.5_acc2.log};
+				\addplot[blue,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0}] {./data/lr_0.5_acc3.log};
+			\end{axis}
+			\node[anchor=south east] at (3.south east) {\scriptsize konstanta učení: 0.5};
+			\\
+			\begin{axis}[width=6.5cm, height=5cm, ylabel={ztráta}, name=1, xlabel={iterace},ytick={0, 1, 2},ymin=0, ymax=2 ]
+				\addplot[red,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0} / 500] {./data/lr_0.1_cost1.log};
+				\addplot[green!80!black,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0} / 500] {./data/lr_0.1_cost2.log};
+				\addplot[blue,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0} / 500] {./data/lr_0.1_cost3.log};
+			\end{axis}
+			\node[anchor=north east] at (1.north east) {\scriptsize konstanta učení: 0.1};
+			 &
+			\begin{axis}[width=6.5cm, height=5cm, ymajorticks=false, name=2, xlabel={iterace}, ytick={0, 1, 2},ymin=0, ymax=2]
+				\addplot[blue,  smooth, each nth point=2] table[x expr=\coordindex, y expr=\thisrowno{0} / 500] {./data/lr_0.3_cost3.log};
+				\addplot[green!80!black,  smooth, each nth point=2] table[x expr=\coordindex, y expr=\thisrowno{0} / 500 ] {./data/lr_0.3_cost2.log};
+				\addplot[red,  smooth, each nth point=2] table[x expr=\coordindex, y expr=\thisrowno{0} / 500 ] {./data/lr_0.3_cost1.log};
+			\end{axis}
+			\node[anchor=north east] at (2.north east) {\scriptsize konstanta učení: 0.3};
+			 &
+			\begin{axis}[width=6.5cm, height=5cm, ymajorticks=false, name=3, xlabel={iterace}, ytick={0, 1, 2},ymin=0, ymax=2]
+				\addplot[blue,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0} / 500] {./data/lr_0.5_cost3.log};
+				\addplot[green!80!black,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0} / 500] {./data/lr_0.5_cost2.log};
+				\addplot[red,  smooth] table[x expr=\coordindex, y expr=\thisrowno{0} / 500] {./data/lr_0.5_cost1.log};
+			\end{axis}
+			\node[anchor=north east] at (3.north east) {\scriptsize konstanta učení: 0.5};
+			\\
+		};
+	\end{tikzpicture}
+	\caption{Vliv konstanty učení na průběh ztráty a přesnosti}\label{fig:lr}
+\end{figure}
+
+\subsubsection{Vliv dalších faktorů sítě}
+Dále bylo provedeno několik experimentů s aktivačními funkcemi, jejich parametry, a počtem neuronů i počtem vrstev ve skrytých vrstvách.
+Obecně bylo problematické odhadovat vliv jednotlivých faktorů, zejména kvůli problémům s numerickou stabilitou, která nebyla v této implementaci optimalizována.
+
+Celkově lepší a stabilnější výsledky poskytovaly omezené aktivační funkce (sigmoidy) s nižším parametrem (v řádu desetin), než skokové funkce nebo neomezené (lineární a ReLU).
+
+Některé konfigurace trénování způsobily konvergenci výrazně rychlejší či stabilnější, pro jiné zase byla nižší citlivost na změnu počátečního stavu.
+
+Pro podrobnější analýzu vlivu jednotlivých aktivačních funkcí a dalších faktorů sítě by bylo potřeba zlepšit numerickou stabilitu implementace a provést rozsáhlejší sadu experimentů,
+což je nad rámec této práce.
