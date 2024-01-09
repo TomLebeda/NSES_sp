@@ -7,7 +7,7 @@ learning_rate=0.2
 target_acc=98.0
 grid_step=0.2
 grid_padding=0.6
-hidden_layer="6:lin:0.6"
+hidden_layer="6:relu:0.6"
 ./target/release/nses_sp \
 	--show \
 	--input-file $input_file \

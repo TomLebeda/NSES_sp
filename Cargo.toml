@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 bimap = "0.6.3"
+chrono = "0.4.31"
 clap = { version = "4.4.7", features = ["derive"] }
 clap-num = "1.0.2"
 env_logger = "0.10.0"

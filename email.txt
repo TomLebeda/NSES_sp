@@ -1,0 +1,14 @@
+Dobrý den paní docentko, 
+
+posílám Vám zkompilovanou verzi své semestrální práce, jak jste chtěla. Pokud by byl jakýkoli problém s (ne)funkčností nebo otázky ohledně použití, tak mi prosím napište.
+Zabudoval jsem také stručnou nápovědu/dokumentaci přímo do programu, stačí jej spustit s argumentem `--help`.
+
+Oproti předchozí verzi jsem ještě přidal ukládání vizualizačních dat do souboru .rrd, který lze poté otevřít přímo v prohlížečové verzi Rerun.io (https://app.rerun.io/).
+Není to sice tolik ergonomické a vizualizace není v reálném čase (průběh trénování je stále zachován, ale zobrazí se až retrospektivně po skončení trénování), ale také není třeba nic instalovat navíc.
+
+Nakonec si dovolím navázat ještě na naši dnešní konverzaci ohledně programování - možná by Vás mohl zaujmout jazyk Julia (který byl původně mou alternativní volbou pro tuto práci). 
+Ve zkratce se jedná o jazyk velmi podobný Matlabu, ale výrazně pohodlnější na použití (alespoň dle mého názoru) a volně dostupný bez nutnosti licencí.
+Velmi dobré shrnutí je zde (2min 39s): https://youtu.be/JYs_94znYy0
+
+S pozdravem,
+Tomáš Lebeda

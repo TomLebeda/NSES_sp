@@ -1,8 +1,11 @@
+use std::path::PathBuf;
+
 use bimap::BiMap;
 use log::{info, trace, warn};
 use nalgebra::{DMatrix, DVector};
 use rand::seq::SliceRandom;
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
+use rerun::RecordingStream;
 
 use crate::{
     cli::Cli,
@@ -119,12 +122,44 @@ impl Network {
     /// run the training routine with given marked points
     pub fn train(&mut self, data: &[Point], cli: &mut Cli) {
         info!("starting training routine");
+        // if visualisation is enabled, run the Rerun viewer or try to save the data into file
+        let mut rec: Option<RecordingStream> = None;
+        if cli.show {
+            trace!("starting Rerun viewer");
+            match rerun::RecordingStreamBuilder::new("nses_sp_visual").spawn() {
+                Ok(viewer) => {
+                    rec = Some(viewer);
+                }
+                Err(e) => {
+                    warn!("Failed to start Rerun viewver: {e}");
+                    if cli.data_log.is_none() {
+                        let timestamp = chrono::Local::now().format("%Y-%m-%d_%H-%M-%S%.3f");
+                        let log_file_name = format!("autosave_{}.rrd", timestamp);
+                        cli.data_log = Some(PathBuf::from(log_file_name));
+                    }
+                    info!("Can't do realtime visualisation, I will try to save the data into file.");
+                    info!("You can open the saved data afterwards on \"https://app.rerun.io\" or with 'rerun path/to/file' command.");
+                    cli.show = false;
+                }
+            }
+        }
+        if rec.is_none() && cli.data_log.is_some() {
+            info!("Data will be saved here: {:?}", &cli.data_log);
+            match rerun::RecordingStreamBuilder::new("nses_sp_visual").save(cli.data_log.as_ref().unwrap()) {
+                Ok(saver) => {
+                    rec = Some(saver);
+                }
+                Err(e) => {
+                    warn!("Can't save the data: {e}")
+                }
+            }
+        }
         // prepare the class mapping between class IDs and their indexes
         let class_map = construct_class_1hot_mapping(data);
         // prepare mapping between classes and their colors
         let color_map = construct_class_color_mapping(data);
         // prepare grid of artificial points for class-area visualisation
-        let mut point_grid = match cli.show {
+        let mut point_grid = match rec.is_some() {
             true => Some(get_point_grid(cli, data)),
             // don't bother with it if visualisations are turned off
             false => None,
@@ -137,27 +172,10 @@ impl Network {
         // copy all the data for classification (to not corrupt training data)
         let mut data_copy: Vec<Point> = data.to_vec();
 
-        // if visualisation is enabled, run the Rerun sdk
-        let rec = match cli.show {
-            true => {
-                trace!("starting Rerun viewer");
-                match rerun::RecordingStreamBuilder::new("nses_sp_visual").spawn() {
-                    Ok(viewer) => Some(viewer),
-                    Err(e) => {
-                        warn!("Failed to start Rerun: {e}");
-                        info!("Disabling visualisations due to previous problem.");
-                        cli.show = false;
-                        None
-                    }
-                }
-            }
-            false => None,
-        };
-
         // if visualisation is enabled get the class-boxes and log them
-        if cli.show {
+        if let Some(rec) = &rec {
             let boxes = get_training_boxes(cli, data, &color_map);
-            rec.as_ref().unwrap().log("boxes", &boxes).unwrap();
+            rec.log("boxes", &boxes).unwrap();
         }
 
         // prepare randomizer for thread-save shuffling between epochs
@@ -207,29 +225,29 @@ impl Network {
                 costs.push(batch_cost);
 
                 // if visualisation is enabled, log the batch cost
-                if cli.show {
-                    log_scalar(rec.as_ref().unwrap(), batch_cost as f64, "batch_cost")
+                if let Some(rec) = &rec {
+                    log_scalar(rec, batch_cost as f64, "batch_cost")
                 }
                 // update weights and biases
                 (last_diffs_w, last_diffs_b) = self.update_params(cli, last_diffs_w, last_diffs_b, grads_w, grads_b);
                 // if visualisation is enabled...
-                if cli.show {
+                if let Some(rec) = &rec {
                     // classify the grid points
                     self.classify_points(point_grid.as_mut().unwrap(), &class_map);
                     // and log them
-                    log_points(rec.as_ref().unwrap(), "grid_points", cli.grid_dot_radius, point_grid.as_ref().unwrap(), &color_map, cli);
+                    log_points(rec, "grid_points", cli.grid_dot_radius, point_grid.as_ref().unwrap(), &color_map, cli);
                     // and also classify the copy of training data
                     self.classify_points(&mut data_copy, &class_map);
                     // and log them
-                    log_points(rec.as_ref().unwrap(), "data", cli.dot_radius, &data_copy, &color_map, cli);
+                    log_points(rec, "data", cli.dot_radius, &data_copy, &color_map, cli);
                 }
                 // get the current classification accuracy
                 // (we use the same training data which is a bad practice)
                 let acc = self.get_accuracy(data, &class_map);
                 accs.push(acc);
                 // if visualisation is enabled, log the current accuracy
-                if cli.show {
-                    log_scalar(rec.as_ref().unwrap(), acc as f64, "train_accuracy")
+                if let Some(rec) = &rec {
+                    log_scalar(rec, acc as f64, "train_accuracy")
                 }
                 // get the accuracy change since last update
                 let acc_change = (acc - last_logged_acc).abs();
